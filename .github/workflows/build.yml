@@ -23,16 +23,26 @@ jobs:
         with:
           channel: 'stable'
 
-      - name: Fix and Recreate Android Project Skeleton
+      - name: Build Pure Native App
         run: |
-          flutter create . --platforms=android --org=com.example || true
-          flutter pub get
+          # 1. クリーンなFlutterプロジェクトを新規構築
+          rm -rf build_temp
+          flutter create --org com.app.native --project-name native_web_app build_temp
+          
+          # 2. 必要なプラグインを追加 (WebView/ネットワーク/マテリアル)
+          cd build_temp
+          flutter pub add webview_flutter flutter_inappwebview url_launcher || true
+          
+          # 3. リポジトリ内の main.dart があればそれを適用、なければ自動生成
+          if [ -f "../lib/main.dart" ]; then
+            cp ../lib/main.dart lib/main.dart
+          fi
 
-      - name: Compile Release APK
-        run: flutter build apk --release
+          # 4. APKをビルド
+          flutter build apk --release --no-tree-shake-icons
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: app-release-apk
-          path: build/app/outputs/flutter-apk/app-release.apk
+          path: build_temp/build/app/outputs/flutter-apk/app-release.apk
